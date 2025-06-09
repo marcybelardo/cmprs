@@ -1,0 +1,11 @@
+.{
+    .name = .cmprs,
+    .version = "0.1.0",
+    .fingerprint = 0x510886fc5e12c189,
+    .minimum_zig_version = "0.14.0",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
