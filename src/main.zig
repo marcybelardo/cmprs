@@ -4,22 +4,20 @@ const cmprs = @import("cmprs");
 var PROGRAM_NAME: []const u8 = undefined;
 
 const USAGE_FMT =
-    \\Usage: {s} FILENAME [--encode/--decode]
+    \\Usage: {s} [option...] [file...]
     \\
-    \\Options:
-    \\  --encode, -E    Encode the file
-    \\  --decode, -D    Decode the file
+    \\  -z, --compress    Force compression
+    \\  -d, --decompress  Force decompression
     \\
     \\Arguments:
-    \\  FILENAME        The file to be encoded/decoded
+    \\  FILENAME          The file to be encoded/decoded
     \\
     \\
 ;
 
 const CliArgs = struct {
     filePath: []const u8 = undefined,
-    encode: bool = false,
-    decode: bool = false,
+    compress: bool = true,
 };
 
 fn display_usage() void {
@@ -33,28 +31,32 @@ fn parseArgs(argv: [][:0]u8) ArgParseError!CliArgs {
     var args = CliArgs{};
 
     var optind: usize = 1;
-    if (argv.len - optind < 2) {
+    while (optind < argv.len and argv[optind][0] == '-') {
+        if (std.mem.eql(u8, argv[optind], "--compress") or
+            std.mem.eql(u8, argv[optind], "-z")) {
+            args.compress = true;
+        } else if (std.mem.eql(u8, argv[optind], "--decompress") or
+                    std.mem.eql(u8, argv[optind], "-d")) {
+            args.compress = false;
+        } else {
+            display_usage();
+            std.debug.print("Unknown option: {s}\n", .{argv[optind]});
+            return error.InvalidArgs;
+        }
+        optind += 1;
+    }
+
+    if (argv.len - optind < 1) {
         display_usage();
         return error.MissingArgs;
     }
+
     args.filePath = argv[optind];
     optind += 1;
 
-    while (optind < argv.len and argv[optind][0] == '-') {
-        if (std.mem.eql(u8, argv[optind], "--encode") or
-            std.mem.eql(u8, argv[optind], "-E")) {
-            args.encode = true;
-        } else if (std.mem.eql(u8, argv[optind], "--decode") or
-                    std.mem.eql(u8, argv[optind], "-D")) {
-            if (args.encode) {
-                display_usage();
-                std.debug.print("Choose either encode or decode\n", .{});
-                return error.InvalidArgs;
-            }
-
-            args.decode = true;
-        }
-        optind += 1;
+    if (argv.len - optind > 0) {
+        display_usage();
+        return error.InvalidArgs;
     }
 
     return args;
@@ -73,8 +75,23 @@ pub fn main() !u8 {
     };
 
     std.debug.print("Path: {s}\n", .{args.filePath});
-    std.debug.print("Encode: {}\n", .{args.encode});
-    std.debug.print("Decode: {}\n", .{args.decode});
+    std.debug.print("Compress: {}\n", .{args.compress});
+
+    const file = std.fs.cwd().openFile(args.filePath, .{}) catch |err| {
+        std.log.err("Failed to open file: {s}", .{@errorName(err)});
+        return 1;
+    };
+    defer file.close();
+    const fileStat = try file.stat();
+    const fileContents = try file.readToEndAlloc(allocator, fileStat.size);
+    defer allocator.free(fileContents);
+
+    if (args.compress) {
+        cmprs.compress(fileContents) catch |err| {
+            std.log.err("Error compressing file: {s}\n", .{@errorName(err)});
+            return 1;
+        };
+    }
 
     return 0;
 }
