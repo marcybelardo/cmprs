@@ -20,7 +20,7 @@ const CliArgs = struct {
     compress: bool = true,
 };
 
-fn display_usage() void {
+fn displayUsage() void {
     std.debug.print(USAGE_FMT, .{PROGRAM_NAME});
 }
 
@@ -39,7 +39,7 @@ fn parseArgs(argv: [][:0]u8) ArgParseError!CliArgs {
                     std.mem.eql(u8, argv[optind], "-d")) {
             args.compress = false;
         } else {
-            display_usage();
+            displayUsage();
             std.debug.print("Unknown option: {s}\n", .{argv[optind]});
             return error.InvalidArgs;
         }
@@ -47,7 +47,7 @@ fn parseArgs(argv: [][:0]u8) ArgParseError!CliArgs {
     }
 
     if (argv.len - optind < 1) {
-        display_usage();
+        displayUsage();
         return error.MissingArgs;
     }
 
@@ -55,7 +55,7 @@ fn parseArgs(argv: [][:0]u8) ArgParseError!CliArgs {
     optind += 1;
 
     if (argv.len - optind > 0) {
-        display_usage();
+        displayUsage();
         return error.InvalidArgs;
     }
 
@@ -82,12 +82,12 @@ pub fn main() !u8 {
         return 1;
     };
     defer file.close();
-    const fileStat = try file.stat();
-    const fileContents = try file.readToEndAlloc(allocator, fileStat.size);
-    defer allocator.free(fileContents);
+    const file_stat = try file.stat();
+    const file_contents = try file.readToEndAlloc(allocator, file_stat.size);
+    defer allocator.free(file_contents);
 
     if (args.compress) {
-        cmprs.compress(fileContents) catch |err| {
+        cmprs.compress(file_contents) catch |err| {
             std.log.err("Error compressing file: {s}\n", .{@errorName(err)});
             return 1;
         };
